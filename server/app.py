@@ -664,6 +664,36 @@ def get_files(record_id):
     # Return the files as a JSON response
     return jsonify({'files': files}), 200
 
+@app.route('getPrescription/<record_id>', methods=['GET'])
+def get_prescription(record_id):
+    # Get the files for the health record with the specified record ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT Prescription FROM HealthRecord WHERE RecordID = ?", (record_id,))
+    prescription = cursor.fetchone()
+    conn.close()
+
+    # Return the files as a JSON response
+    return jsonify({'prescription': prescription}), 200
+
+@app.route('/addPrescription/<record_id>', methods=['PUT'])
+def add_prescription(record_id):
+    # Get the request data
+    data = request.get_json()
+
+    # Extract the prescription details from the request data
+    prescription = data['Prescription']
+
+    # Update the prescription details in the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE HealthRecord SET Prescription = ? WHERE RecordID = ?", (prescription, record_id))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Prescription added successfully'}), 200
+
 @app.route('/deleteFile/<file_id>', methods=['DELETE'])
 def delete_file(file_id):
     # Delete the file with the specified file ID from the database
