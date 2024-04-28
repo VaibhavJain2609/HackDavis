@@ -19,6 +19,8 @@ CREATE TABLE Doctor (
     LastName VARCHAR(255),
     Specialization VARCHAR(255),
     HospitalID INT,
+    PhoneNumber VARCHAR(20),
+    Email VARCHAR(255),
     FOREIGN KEY (HospitalID) REFERENCES Hospital(HospitalID)
 );
 
