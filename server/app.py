@@ -3,10 +3,17 @@ from flask import *
 import sqlite3
 import re
 import random
+from propelauth_flask import init_auth
 app = Flask(__name__)
-
+auth = init_auth("https://7606143.propelauthtest.com",
+                 "28f707599ab2007acda499948bc38cdad0d8ab3db761d7b866691e2d45e002cb6f3160c70379aaf81cbd53ec151328e2")
 DATABASE_FILE = 'var/data.sqlite3'
 
+@app.route("/api/whoami")
+@auth.require_user
+def who_am_i():
+    """This route is protected, current_user is always set"""
+    return {"user_id": current_user.user_id}
 @app.route('/patients', methods=['POST'])
 def create_patient():
     # Get the request data
@@ -493,7 +500,7 @@ def update_doctor_assignment(assignmentid):
     # Return a success response
     return jsonify({'message': 'Doctor assignment updated successfully'}), 200
 
-@app.route('/addhealthrecord', method = ['POST'])
+@app.route('/addhealthrecord', methods = ['POST'])
 def create_health_record():
     # Get the request data
     data = request.get_json()
@@ -664,7 +671,7 @@ def get_files(record_id):
     # Return the files as a JSON response
     return jsonify({'files': files}), 200
 
-@app.route('getPrescription/<record_id>', methods=['GET'])
+@app.route('/getPrescription/<record_id>', methods=['GET'])
 def get_prescription(record_id):
     # Get the files for the health record with the specified record ID from the database
     conn = sqlite3.connect(DATABASE_FILE)
@@ -675,6 +682,19 @@ def get_prescription(record_id):
 
     # Return the files as a JSON response
     return jsonify({'prescription': prescription}), 200
+
+@app.route('/getDoctorsBySpecialization/<specialization>', methods=['GET'])
+def get_doctors_by_specialization(specialization):
+    # Get the doctors with the specified specialization from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Doctor WHERE Specialization = ?", (specialization,))
+    doctors = cursor.fetchall()
+    conn.close()
+
+    # Return the doctors as a JSON response
+    return jsonify({'doctors': doctors}), 200
+
 
 @app.route('/addPrescription/<record_id>', methods=['PUT'])
 def add_prescription(record_id):
