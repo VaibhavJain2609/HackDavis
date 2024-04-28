@@ -1,7 +1,6 @@
 -- Patient Table
 CREATE TABLE Patient (
-    PatientID INT PRIMARY KEY,
-    HealthID INT UNIQUE,
+    HealthID INT UNIQUE PRIMARY KEY,
     FirstName VARCHAR(255),
     LastName VARCHAR(255),
     DateOfBirth DATE,
@@ -59,13 +58,13 @@ CREATE TABLE Files (
 -- EmergencyContact Table
 CREATE TABLE EmergencyContact (
     EmergencyContactID INT PRIMARY KEY,
-    PatientID INT,
+    HealthID INT,
     FirstName VARCHAR(255),
     LastName VARCHAR(255),
     Relationship VARCHAR(255),
     PhoneNumber VARCHAR(20),
     Email VARCHAR(255),
-    FOREIGN KEY (PatientID) REFERENCES Patient(PatientID)
+    FOREIGN KEY (HealthID) REFERENCES Patient(HealthID)
 );
 
 -- User Table
