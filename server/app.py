@@ -3,10 +3,17 @@ from flask import *
 import sqlite3
 import re
 import random
+from propelauth_flask import init_auth
 app = Flask(__name__)
-
+auth = init_auth("https://7606143.propelauthtest.com",
+                 "28f707599ab2007acda499948bc38cdad0d8ab3db761d7b866691e2d45e002cb6f3160c70379aaf81cbd53ec151328e2")
 DATABASE_FILE = 'var/data.sqlite3'
 
+@app.route("/api/whoami")
+@auth.require_user
+def who_am_i():
+    """This route is protected, current_user is always set"""
+    return {"user_id": current_user.user_id}
 @app.route('/patients', methods=['POST'])
 def create_patient():
     # Get the request data
@@ -382,6 +389,379 @@ def get_appointment(appointmentid):
     # Return the appointment as a JSON response
     return jsonify({'appointment': appointment}), 200
 
+@app.route('/deleteAppointment/<appointmentid>', methods=['DELETE'])
+def delete_appointment(appointmentid):
+    # Delete the appointment with the specified appointment ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM Appointment WHERE AppointmentID = ?", (appointmentid,))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Appointment deleted successfully'}), 200
+
+@app.route('/updateAppointment/<appointmentid>', methods=['PUT'])
+def update_appointment(appointmentid):
+    # Get the request data
+    data = request.get_json()
+
+    # Extract the appointment details from the request data
+    doctor_id = data['DoctorID']
+    hospital_id = data['HospitalID']
+    date = data['Date']
+    time = data['Time']
+
+    # Update the appointment details in the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Appointment SET DoctorID = ?, HospitalID = ?, Date = ?, Time = ? WHERE AppointmentID = ?", (doctor_id, hospital_id, date, time, appointmentid))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Appointment updated successfully'}), 200
+
+@app.route('/addDoctorAssignment', methods=['POST'])
+def create_doctor_assignment():
+    # Get the request data
+    data = request.get_json()
+
+    # Extract the doctor assignment details from the request data
+    doctor_id = data['DoctorID']
+    hospital_id = data['HospitalID']
+
+    # Generate a unique doctor assignment ID
+    # You can use a library like uuid to generate a unique ID
+    doctor_assignment_id = generate_unique_id("DoctorAssignment")
+
+    # Insert the doctor assignment details into the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO DoctorAssignment (AssignmentID, DoctorID, HospitalID) VALUES ( ?, ?, ?)", ( doctor_assignment_id, doctor_id, hospital_id))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Doctor assignment created successfully'}), 201
+
+@app.route('/getDoctorAssignments', methods=['GET'])
+def get_doctor_assignments():
+    # Get all the doctor assignments from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM DoctorAssignment")
+    doctor_assignments = cursor.fetchall()
+    conn.close()
+
+    # Return the doctor assignments as a JSON response
+    return jsonify({'doctor_assignments': doctor_assignments}), 200
+
+@app.route('/getDoctorAssignment/<assignmentid>', methods=['GET'])
+def get_doctor_assignment(assignmentid):
+    # Get the doctor assignment with the specified assignment ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM DoctorAssignment WHERE AssignmentID = ?", (assignmentid,))
+    doctor_assignment = cursor.fetchone()
+    conn.close()
+
+    # Return the doctor assignment as a JSON response
+    return jsonify({'doctor_assignment': doctor_assignment}), 200
+
+@app.route('/deleteDoctorAssignment/<assignmentid>', methods=['DELETE'])
+def delete_doctor_assignment(assignmentid):
+    # Delete the doctor assignment with the specified assignment ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM DoctorAssignment WHERE AssignmentID = ?", (assignmentid,))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Doctor assignment deleted successfully'}), 200
+
+@app.route('/updateDoctorAssignment/<assignmentid>', methods=['PUT'])
+def update_doctor_assignment(assignmentid):
+    # Get the request data
+    data = request.get_json()
+
+    # Extract the doctor assignment details from the request data
+    doctor_id = data['DoctorID']
+    hospital_id = data['HospitalID']
+
+    # Update the doctor assignment details in the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE DoctorAssignment SET DoctorID = ?, HospitalID = ? WHERE AssignmentID = ?", (doctor_id, hospital_id, assignmentid))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Doctor assignment updated successfully'}), 200
+
+@app.route('/addhealthrecord', methods = ['POST'])
+def create_health_record():
+    # Get the request data
+    data = request.get_json()
+    record_id = generate_unique_id('HealthRecord')
+    # Extract the health record details from the request data
+    health_id = data['HealthID']
+    doctor_id = data['DoctorID']
+    hospital_id = data['HospitalID']
+    date_of_visit = data['DateOfCheck']
+    diagnosis = data['Diagnosis']
+    prescription = data['Prescription']
+    notes = data['Notes']
+
+    # Insert the health record details into the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO HealthRecord (RecordID, HealthID, DoctorID, HospitalID, DateOfVisit, Diagnosis, Prescription, Notes) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)", ( record_id, health_id, doctor_id, hospital_id, date_of_visit, diagnosis, prescription, notes))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Health record created successfully'}), 201
+
+@app.route('/getHealthRecords', methods=['GET'])
+def get_health_records():
+    # Get all the health records from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM HealthRecord")
+    health_records = cursor.fetchall()
+    conn.close()
+
+    # Return the health records as a JSON response
+    return jsonify({'health_records': health_records}), 200
+
+@app.route('/getHealthRecord/<recordid>', methods=['GET'])
+def get_health_record(recordid):
+    # Get the health record with the specified record ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM HealthRecord WHERE RecordID = ?", (recordid,))
+    health_record = cursor.fetchone()
+    conn.close()
+
+    # Return the health record as a JSON response
+    return jsonify({'health_record': health_record}), 200
+
+@app.route('/deleteHealthRecord/<recordid>', methods=['DELETE'])
+def delete_health_record(recordid):
+    # Delete the health record with the specified record ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM HealthRecord WHERE RecordID = ?", (recordid,))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Health record deleted successfully'}), 200
+
+@app.route('/updateHealthRecord/<recordid>', methods=['PUT'])
+def update_health_record(recordid):
+    # Get the request data
+    data = request.get_json()
+
+    # Extract the health record details from the request data
+    health_id = data['HealthID']
+    doctor_id = data['DoctorID']
+    hospital_id = data['HospitalID']
+    date_of_visit = data['DateOfCheck']
+    diagnosis = data['Diagnosis']
+    prescription = data['Prescription']
+    notes = data['Notes']
+
+    # Update the health record details in the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE HealthRecord SET HealthID = ?, DoctorID = ?, HospitalID = ?, DateOfVisit = ?, Diagnosis = ?, Prescription = ?, Notes = ? WHERE RecordID = ?", (health_id, doctor_id, hospital_id, date_of_visit, diagnosis, prescription, notes, recordid))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Health record updated successfully'}), 200
+
+@app.route('/getPatientHealthRecords/<healthid>', methods=['GET'])
+def get_patient_health_records(healthid):
+    # Get the health records for the patient with the specified health ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM HealthRecord WHERE HealthID = ?", (healthid,))
+    health_records = cursor.fetchall()
+    conn.close()
+
+    # Return the health records as a JSON response
+    return jsonify({'health_records': health_records}), 200
+
+@app.route('/getDoctorAppointments/<doctorid>', methods=['GET'])
+def get_doctor_appointments(doctorid):
+    # Get the appointments for the doctor with the specified doctor ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Appointment WHERE DoctorID = ?", (doctorid,))
+    appointments = cursor.fetchall()
+    conn.close()
+
+    # Return the appointments as a JSON response
+    return jsonify({'appointments': appointments}), 200
+
+@app.route('/getHospitalDoctors/<hospitalid>', methods=['GET'])
+def get_hospital_doctors(hospitalid):
+    # Get the doctors for the hospital with the specified hospital ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Doctor WHERE HospitalID = ?", (hospitalid,))
+    doctors = cursor.fetchall()
+    conn.close()
+
+    # Return the doctors as a JSON response
+    return jsonify({'doctors': doctors}), 200
+
+@app.route('/getDoctorHospitals/<doctorid>', methods=['GET'])
+def get_doctor_hospitals(doctorid):
+    # Get the hospitals for the doctor with the specified doctor ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM DoctorAssignment WHERE DoctorID = ?", (doctorid,))
+    hospitals = cursor.fetchall()
+    conn.close()
+
+    # Return the hospitals as a JSON response
+    return jsonify({'hospitals': hospitals}), 200
+
+@app.route('/getPatientAppointments/<healthid>', methods=['GET'])
+def get_patient_appointments(healthid):
+    # Get the appointments for the patient with the specified health ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Appointment WHERE PatientID = ?", (healthid,))
+    appointments = cursor.fetchall()
+    conn.close()
+
+    # Return the appointments as a JSON response
+    return jsonify({'appointments': appointments}), 200
+
+@app.route('/addFile/<record_id>', methods=['POST'])
+def upload_file(record_id):
+    # Get the file from the request
+    file = request.files['file']
+    recordid = record_id
+    # Save the file to the uploads folder
+    file.save('uploads/' + file.filename)
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO Files (RecordID, FileName) VALUES ( ?, ?)", (recordid, file.filename))
+    conn.commit()
+    conn.close()
+    # Return a success response
+    return jsonify({'message': 'File uploaded successfully'}), 201
+
+@app.route('/getFiles/<record_id>', methods=['GET'])
+def get_files(record_id):
+    # Get the files for the health record with the specified record ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Files WHERE RecordID = ?", (record_id,))
+    files = cursor.fetchall()
+    conn.close()
+
+    # Return the files as a JSON response
+    return jsonify({'files': files}), 200
+
+@app.route('/getPrescription/<record_id>', methods=['GET'])
+def get_prescription(record_id):
+    # Get the files for the health record with the specified record ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT Prescription FROM HealthRecord WHERE RecordID = ?", (record_id,))
+    prescription = cursor.fetchone()
+    conn.close()
+
+    # Return the files as a JSON response
+    return jsonify({'prescription': prescription}), 200
+
+@app.route('/getDoctorsBySpecialization/<specialization>', methods=['GET'])
+def get_doctors_by_specialization(specialization):
+    # Get the doctors with the specified specialization from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Doctor WHERE Specialization = ?", (specialization,))
+    doctors = cursor.fetchall()
+    conn.close()
+
+    # Return the doctors as a JSON response
+    return jsonify({'doctors': doctors}), 200
+
+
+@app.route('/addPrescription/<record_id>', methods=['PUT'])
+def add_prescription(record_id):
+    # Get the request data
+    data = request.get_json()
+
+    # Extract the prescription details from the request data
+    prescription = data['Prescription']
+
+    # Update the prescription details in the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE HealthRecord SET Prescription = ? WHERE RecordID = ?", (prescription, record_id))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'Prescription added successfully'}), 200
+
+@app.route('/deleteFile/<file_id>', methods=['DELETE'])
+def delete_file(file_id):
+    # Delete the file with the specified file ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM Files WHERE FileID = ?", (file_id,))
+    conn.commit()
+    conn.close()
+
+    # Return a success response
+    return jsonify({'message': 'File deleted successfully'}), 200
+
+@app.route('/getPatientFiles/<healthid>', methods=['GET'])
+def get_patient_files(healthid):
+    # Get the files for the patient with the specified health ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Files WHERE HealthID = ?", (healthid,))
+    files = cursor.fetchall()
+    conn.close()
+
+    # Return the files as a JSON response
+    return jsonify({'files': files}), 200
+
+@app.route('/getDoctorFiles/<doctorid>', methods=['GET'])
+def get_doctor_files(doctorid):
+    # Get the files for the doctor with the specified doctor ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Files WHERE DoctorID = ?", (doctorid,))
+    files = cursor.fetchall()
+    conn.close()
+
+    # Return the files as a JSON response
+    return jsonify({'files': files}), 200
+
+@app.route('/getHospitalFiles/<hospitalid>', methods=['GET'])
+def get_hospital_files(hospitalid):
+    # Get the files for the hospital with the specified hospital ID from the database
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM Files WHERE HospitalID = ?", (hospitalid,))
+    files = cursor.fetchall()
+    conn.close()
+
+    # Return the files as a JSON response
+    return jsonify({'files': files}), 200
+
 
 def generate_unique_id(params1):
     if params1 == 'Hospital':
@@ -390,5 +770,14 @@ def generate_unique_id(params1):
     elif params1 == 'Doctor':
         # Generate a unique ID using a combination of letters and numbers
         return 'D' + str(random.randint(1000, 9999))
+    elif params1 == 'Appointment':
+        # Generate a unique ID using a combination of letters and numbers
+        return 'A' + str(random.randint(1000, 9999))
+    elif params1 == 'DoctorAssignment':
+        # Generate a unique ID using a combination of letters and numbers
+        return 'DA' + str(random.randint(1000, 9999))
+    elif params1 == 'HealthRecord':
+        # Generate a unique ID using a combination of letters and numbers
+        return 'HR' + str(random.randint(1000, 9999))
     # Generate a unique ID using a combination of letters and numbers
     return 'P' + str(random.randint(1000, 9999))
